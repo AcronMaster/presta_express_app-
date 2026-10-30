@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:presta_expres/screens/upload_screen.dart';
 
 import '../widgets/app_logo.dart';
 import '../widgets/custom_text_field.dart';
@@ -61,6 +62,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 text: 'Iniciar sesión',
                 onPressed: () {
                   // Acción de login
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => UploadScreen()),
+                  );
                 },
               ),
               const SizedBox(height: 50),
