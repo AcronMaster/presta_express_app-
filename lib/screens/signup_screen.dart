@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../services/api_service.dart';
+import '../utils/mensajes.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
@@ -12,7 +15,62 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  final _correoCtrl = TextEditingController();
+  final _telefonoCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
   bool termsAccepted = false;
+  bool _cargando = false;
+
+  @override
+  void dispose() {
+    _correoCtrl.dispose();
+    _telefonoCtrl.dispose();
+    _passCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _registrar() async {
+    final correo = _correoCtrl.text.trim();
+    final telefono = _telefonoCtrl.text.trim();
+    final pass = _passCtrl.text;
+
+    // Validaciones rápidas en la app (el backend vuelve a validar todo)
+    if (correo.isEmpty || telefono.isEmpty || pass.isEmpty) {
+      mostrarMensaje(context, 'Completa todos los campos', error: true);
+      return;
+    }
+    if (pass != _confirmCtrl.text) {
+      mostrarMensaje(context, 'Las contraseñas no coinciden', error: true);
+      return;
+    }
+    if (!termsAccepted) {
+      mostrarMensaje(
+        context,
+        'Debes aceptar los términos y la política de privacidad',
+        error: true,
+      );
+      return;
+    }
+
+    setState(() => _cargando = true);
+    try {
+      await ApiService.registrar(
+        correo: correo,
+        password: pass,
+        telefono: telefono,
+      );
+      if (!mounted) return;
+      mostrarMensaje(context, '¡Cuenta creada con éxito! Por favor inicia sesión.');
+      Navigator.pop(context); // regresa al Login
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _cargando = false);
+      // Muestra los errores del backend: formato, duplicados, etc.
+      mostrarMensaje(context, e.textoCompleto, error: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,14 +94,37 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              const CustomTextField(label: 'Correo electrónico'),
-              const CustomTextField(label: 'Teléfono'),
-              const CustomTextField(label: 'Contraseña', obscureText: true),
-              const CustomTextField(
-                label: 'Confirmar contraseña',
+              CustomTextField(
+                label: 'Correo electrónico',
+                controller: _correoCtrl,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              CustomTextField(
+                label: 'Teléfono',
+                controller: _telefonoCtrl,
+                keyboardType: TextInputType.phone,
+                maxLength: 10,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+              CustomTextField(
+                label: 'Contraseña',
+                controller: _passCtrl,
                 obscureText: true,
               ),
-              const SizedBox(height: 10),
+              CustomTextField(
+                label: 'Confirmar contraseña',
+                controller: _confirmCtrl,
+                obscureText: true,
+              ),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'La contraseña debe tener de 8 a 64 caracteres, con mayúscula, '
+                  'minúscula, número y un símbolo (!@#\$%^&*()_+-=.,?).',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ),
+              const SizedBox(height: 16),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -77,35 +158,10 @@ class _SignupScreenState extends State<SignupScreen> {
                 ],
               ),
               const SizedBox(height: 30),
-
-              // BOTÓN PARA VOLVER AL LOGIN
               PrimaryButton(
                 text: 'Registrarse',
-                onPressed: () {
-                  // 1. Aquí iría tu lógica para guardar el usuario en Firebase/Backend
-
-                  // 2. Mostramos un mensaje de éxito
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        '¡Cuenta creada con éxito! Por favor inicia sesión.',
-                      ),
-                      backgroundColor: Color(0xFF158134),
-                    ),
-                  );
-
-                  // 3. Regresamos a la pantalla de Login
-                  Navigator.pop(context);
-
-                  /* 
-                  NOTA: Si en lugar de regresar al login quisieras 
-                  reiniciar la pila de navegación, podrías usar:
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  );
-                  */
-                },
+                isLoading: _cargando,
+                onPressed: _registrar,
               ),
               const SizedBox(height: 30),
             ],

@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CustomTextField extends StatelessWidget {
   final String label;
   final bool obscureText;
+  final TextEditingController? controller;
+  final TextInputType? keyboardType;
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
 
   const CustomTextField({
     super.key,
     required this.label,
     this.obscureText = false,
+    this.controller,
+    this.keyboardType,
+    this.maxLength,
+    this.inputFormatters,
   });
 
   @override
@@ -25,8 +34,15 @@ class CustomTextField extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextField(
+          controller: controller,
           obscureText: obscureText,
+          keyboardType: keyboardType,
+          maxLength: maxLength,
+          inputFormatters: inputFormatters,
+          autocorrect: !obscureText,
+          enableSuggestions: !obscureText,
           decoration: InputDecoration(
+            counterText: '', // oculta el contador de caracteres
             filled: true,
             fillColor: const Color(0xFFF8F9FA),
             contentPadding: const EdgeInsets.symmetric(

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:presta_expres/screens/upload_screen.dart';
 
+import '../services/api_service.dart';
+import '../utils/mensajes.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
+import 'admin_screen.dart';
 import 'signup_screen.dart';
+import 'upload_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +17,53 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _correoCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
   bool rememberMe = false;
+  bool _cargando = false;
+
+  @override
+  void dispose() {
+    _correoCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _iniciarSesion() async {
+    final correo = _correoCtrl.text.trim();
+    final pass = _passCtrl.text;
+
+    if (correo.isEmpty || pass.isEmpty) {
+      mostrarMensaje(context, 'Ingresa tu correo y contraseña', error: true);
+      return;
+    }
+
+    setState(() => _cargando = true);
+    try {
+      final rol = await ApiService.login(correo, pass);
+      if (!mounted) return;
+      setState(() => _cargando = false);
+
+      // La pantalla depende del rol que devuelve el backend
+      final Widget destino = rol == 'administrador'
+          ? const AdminScreen()
+          : const UploadScreen();
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => destino),
+      );
+
+      // Al volver al login (por cualquier vía) se cierra la sesión
+      ApiService.logout();
+      if (!mounted) return;
+      _passCtrl.clear();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _cargando = false);
+      mostrarMensaje(context, e.textoCompleto, error: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +87,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              const CustomTextField(label: 'Correo electrónico'),
-              const CustomTextField(label: 'Contraseña', obscureText: true),
+              CustomTextField(
+                label: 'Correo electrónico',
+                controller: _correoCtrl,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              CustomTextField(
+                label: 'Contraseña',
+                controller: _passCtrl,
+                obscureText: true,
+              ),
               Row(
                 children: [
                   Switch(
@@ -60,13 +117,8 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 30),
               PrimaryButton(
                 text: 'Iniciar sesión',
-                onPressed: () {
-                  // Acción de login
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => UploadScreen()),
-                  );
-                },
+                isLoading: _cargando,
+                onPressed: _iniciarSesion,
               ),
               const SizedBox(height: 50),
               Row(
@@ -84,7 +136,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           builder: (context) => const SignupScreen(),
                         ),
                       );
-                      // Navegar a registro
                     },
                     child: const Text(
                       'Registrate',
